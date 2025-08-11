@@ -122,10 +122,12 @@
   <h2>Historial de intentos</h2>
   <ul id="history"></ul>
   <button id="resetBtn" type="button">Reiniciar</button>
+  <h2>Ranking de intentos</h2>
+  <ol id="rankingList"></ol>
 </main>
 <div id="successScreen" class="overlay hidden">
   <div class="overlay-content">
-    <p>¡Número correcto!</p>
+    <p id="successMessage"></p>
     <button id="playAgainBtn" type="button">Jugar de nuevo</button>
   </div>
 </div>
@@ -146,7 +148,10 @@
   const historyList = document.getElementById('history');
   const form = document.getElementById('guessForm');
   const successScreen = document.getElementById('successScreen');
+  const successMessage = document.getElementById('successMessage');
   const playAgainBtn = document.getElementById('playAgainBtn');
+  const rankingList = document.getElementById('rankingList');
+  const ranking = [];
   let lowerBound = 1;
   let upperBound = max;
   let commonPrefix = '';
@@ -195,7 +200,17 @@
     preFillBtn.setAttribute('aria-disabled', String(!enablePre));
   }
 
+  function updateRanking() {
+    rankingList.innerHTML = '';
+    ranking.forEach((score, index) => {
+      const li = document.createElement('li');
+      li.textContent = `${index + 1}. ${score} intento${score !== 1 ? 's' : ''}`;
+      rankingList.appendChild(li);
+    });
+  }
+
   updateRangeText();
+  updateRanking();
 
   // Habilita o deshabilita el botón Enviar según la entrada y si existe número secreto
     function updateSendState() {
@@ -241,6 +256,10 @@
     if (guess === secret) {
       hint = 'Correcto';
       feedback.textContent = hint;
+      ranking.push(attempts);
+      ranking.sort((a, b) => a - b);
+      updateRanking();
+      successMessage.textContent = `¡Correcto! El número era ${formatNumber(secret)}. Lo adivinaste en ${attempts} intento${attempts !== 1 ? 's' : ''}.`;
       successScreen.classList.remove('hidden');
     } else if (guess < secret) {
       lowerBound = Math.max(lowerBound, guess);
