@@ -81,6 +81,27 @@
   .feedback {
     min-height: 1.5em;
   }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+  }
+
+  .overlay-content {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 2rem;
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  .hidden {
+    display: none;
+  }
 </style>
 </head>
 <body>
@@ -92,7 +113,6 @@
     <input id="guessInput" type="text" inputmode="numeric" pattern="[0-9.]*" placeholder="Introduce tu número…">
       <div class="button-row">
         <button id="preFillBtn" type="button" disabled aria-disabled="true">PreEscribir</button>
-        <button id="fillBtn" type="button">Rellenar</button>
         <button id="sendBtn" type="submit" disabled aria-disabled="true">Enviar</button>
       </div>
       </form>
@@ -103,6 +123,12 @@
   <ul id="history"></ul>
   <button id="resetBtn" type="button">Reiniciar</button>
 </main>
+<div id="successScreen" class="overlay hidden">
+  <div class="overlay-content">
+    <p>¡Número correcto!</p>
+    <button id="playAgainBtn" type="button">Jugar de nuevo</button>
+  </div>
+</div>
 <script>
 // Lógica del juego de adivinar el número
 (function() {
@@ -113,13 +139,14 @@
   const guessInput = document.getElementById('guessInput');
   const sendBtn = document.getElementById('sendBtn');
   const preFillBtn = document.getElementById('preFillBtn');
-  const fillBtn = document.getElementById('fillBtn');
   const resetBtn = document.getElementById('resetBtn');
   const feedback = document.getElementById('feedback');
   const attemptsText = document.getElementById('attempts');
   const rangeText = document.getElementById('range');
   const historyList = document.getElementById('history');
   const form = document.getElementById('guessForm');
+  const successScreen = document.getElementById('successScreen');
+  const playAgainBtn = document.getElementById('playAgainBtn');
   let lowerBound = 1;
   let upperBound = max;
   let commonPrefix = '';
@@ -214,6 +241,7 @@
     if (guess === secret) {
       hint = 'Correcto';
       feedback.textContent = hint;
+      successScreen.classList.remove('hidden');
     } else if (guess < secret) {
       lowerBound = Math.max(lowerBound, guess);
       hint = 'Mayor';
@@ -245,6 +273,7 @@
     upperBound = max;
     historyList.innerHTML = '';
     updateRangeText();
+    successScreen.classList.add('hidden');
   }
 
   // Valida la entrada en cada cambio
@@ -277,20 +306,12 @@
   }
 
   preFillBtn.addEventListener('click', applyPreFill);
-
-  fillBtn.addEventListener('click', () => {
-    const raw = guessInput.value.trim().replace(/\./g, '');
-    if (raw === '') return;
-    const maxDigits = String(upperBound).length;
-    const padded = raw.padEnd(maxDigits, '0');
-    guessInput.value = formatNumber(Number(padded));
-    feedback.textContent = '';
-    updateSendState();
-    guessInput.focus();
-  });
-
   generateBtn.addEventListener('click', generateSecret);
   resetBtn.addEventListener('click', resetGame);
+  playAgainBtn.addEventListener('click', () => {
+    generateSecret();
+    successScreen.classList.add('hidden');
+  });
   form.addEventListener('submit', function(e) {
     e.preventDefault();
     if (!sendBtn.disabled) handleGuess();
