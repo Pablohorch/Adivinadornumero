@@ -41,6 +41,11 @@
     width: 100%;
   }
 
+  .button-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
   button,
   input {
     font-size: 1rem;
@@ -85,7 +90,10 @@
   <form id="guessForm" autocomplete="off">
     <label for="guessInput">Introduce tu número…</label>
     <input id="guessInput" type="text" inputmode="numeric" pattern="[0-9.]*" placeholder="Introduce tu número…">
-    <button id="sendBtn" type="submit" disabled aria-disabled="true">Enviar</button>
+    <div class="button-row">
+      <button id="preFillBtn" type="button" disabled aria-disabled="true">PreEscribir</button>
+      <button id="sendBtn" type="submit" disabled aria-disabled="true">Enviar</button>
+    </div>
   </form>
   <output id="feedback" aria-live="polite" class="feedback"></output>
   <p id="attempts">Intentos: 0</p>
@@ -103,6 +111,7 @@
   const generateBtn = document.getElementById('generateBtn');
   const guessInput = document.getElementById('guessInput');
   const sendBtn = document.getElementById('sendBtn');
+  const preFillBtn = document.getElementById('preFillBtn');
   const resetBtn = document.getElementById('resetBtn');
   const feedback = document.getElementById('feedback');
   const attemptsText = document.getElementById('attempts');
@@ -111,15 +120,50 @@
   const form = document.getElementById('guessForm');
   let lowerBound = 1;
   let upperBound = max;
+  let commonPrefix = '';
 
   function formatNumber(n) {
     return n.toLocaleString('es-ES');
   }
 
+  function boldCommonDigits(text, prefixLen) {
+    let result = '';
+    let count = 0;
+    let opened = false;
+    for (const ch of text) {
+      if (ch === '.') {
+        result += ch;
+      } else {
+        if (count === 0 && prefixLen > 0) {
+          result += '<b>';
+          opened = true;
+        }
+        result += ch;
+        count++;
+        if (count === prefixLen && opened) {
+          result += '</b>';
+          opened = false;
+        }
+      }
+    }
+    if (opened) result += '</b>';
+    return result;
+  }
+
   function updateRangeText() {
     const minText = formatNumber(lowerBound);
     const maxText = formatNumber(upperBound);
-    rangeText.textContent = 'Menor: ' + minText + ' | Mayor: ' + maxText;
+    const minRaw = String(lowerBound);
+    const maxRaw = String(upperBound);
+    let prefixLen = 0;
+    while (minRaw[prefixLen] && minRaw[prefixLen] === maxRaw[prefixLen]) prefixLen++;
+    commonPrefix = minRaw.slice(0, prefixLen);
+    const minHTML = boldCommonDigits(minText, prefixLen);
+    const maxHTML = boldCommonDigits(maxText, prefixLen);
+    rangeText.innerHTML = 'Menor: ' + minHTML + ' | Mayor: ' + maxHTML;
+    const enablePre = prefixLen > 0;
+    preFillBtn.disabled = !enablePre;
+    preFillBtn.setAttribute('aria-disabled', String(!enablePre));
   }
 
   updateRangeText();
@@ -218,6 +262,15 @@
       }
     }
     updateSendState();
+  });
+
+  preFillBtn.addEventListener('click', () => {
+    if (commonPrefix !== '') {
+      guessInput.value = formatNumber(Number(commonPrefix));
+      feedback.textContent = '';
+      updateSendState();
+      guessInput.focus();
+    }
   });
 
   generateBtn.addEventListener('click', generateSecret);
