@@ -227,8 +227,7 @@
     const li = document.createElement('li');
     li.textContent = formatNumber(guess) + ' → ' + hint;
     historyList.appendChild(li);
-    guessInput.value = '';
-    updateSendState();
+    applyPreFill();
   }
 
   // Reinicia el juego
@@ -266,14 +265,18 @@
     updateSendState();
   });
 
-  preFillBtn.addEventListener('click', () => {
+  function applyPreFill() {
     if (commonPrefix !== '') {
       guessInput.value = formatNumber(Number(commonPrefix));
       feedback.textContent = '';
-      updateSendState();
-      guessInput.focus();
+    } else {
+      guessInput.value = '';
     }
-  });
+    updateSendState();
+    guessInput.focus();
+  }
+
+  preFillBtn.addEventListener('click', applyPreFill);
 
   fillBtn.addEventListener('click', () => {
     const raw = guessInput.value.trim().replace(/\./g, '');
