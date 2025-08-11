@@ -25,6 +25,7 @@
   </form>
   <output id="feedback" aria-live="polite" class="feedback"></output>
   <p id="attempts">Intentos: 0</p>
+  <p id="range">Menor: - | Mayor: -</p>
   <button id="resetBtn" type="button">Reiniciar</button>
 </main>
 <script>
@@ -39,14 +40,28 @@
   const resetBtn = document.getElementById('resetBtn');
   const feedback = document.getElementById('feedback');
   const attemptsText = document.getElementById('attempts');
+  const rangeText = document.getElementById('range');
   const form = document.getElementById('guessForm');
+  let minTried = null;
+  let maxTried = null;
+
+  function formatNumber(n) {
+    return n.toLocaleString('es-ES');
+  }
+
+  function updateRangeText() {
+    const minText = minTried == null ? '-' : formatNumber(minTried);
+    const maxText = maxTried == null ? '-' : formatNumber(maxTried);
+    rangeText.textContent = 'Menor: ' + minText + ' | Mayor: ' + maxText;
+  }
+
+  updateRangeText();
 
   // Habilita o deshabilita el botón Enviar según la entrada y si existe número secreto
   function updateSendState() {
-    const value = guessInput.value.trim();
-    const validPattern = /^\d+(?:\.\d{3})*$/;
-    const isValid = secret !== null && validPattern.test(value) &&
-                    (n => n >= 1 && n <= max)(Number(value.replace(/\./g, '')));
+    const raw = guessInput.value.trim().replace(/\./g, '');
+    const isValid = secret !== null && raw !== '' &&
+                    /^\d+$/.test(raw) && (n => n >= 1 && n <= max)(Number(raw));
     sendBtn.disabled = !isValid;
     sendBtn.setAttribute('aria-disabled', String(sendBtn.disabled));
     return isValid;
@@ -69,6 +84,9 @@
     guessInput.value = '';
     sendBtn.disabled = true;
     sendBtn.setAttribute('aria-disabled', 'true');
+    minTried = null;
+    maxTried = null;
+    updateRangeText();
     guessInput.focus();
   }
 
@@ -78,6 +96,9 @@
     const guess = Number(guessInput.value.replace(/\./g, ''));
     attempts++;
     attemptsText.textContent = 'Intentos: ' + attempts;
+    if (minTried === null || guess < minTried) minTried = guess;
+    if (maxTried === null || guess > maxTried) maxTried = guess;
+    updateRangeText();
     if (guess === secret) {
       feedback.textContent = 'Correcto';
     } else if (guess < secret) {
@@ -100,18 +121,20 @@
     generateBtn.setAttribute('aria-disabled', 'false');
     sendBtn.disabled = true;
     sendBtn.setAttribute('aria-disabled', 'true');
+    minTried = null;
+    maxTried = null;
+    updateRangeText();
   }
 
   // Valida la entrada en cada cambio
   guessInput.addEventListener('input', () => {
-    const value = guessInput.value.trim();
-    const validPattern = /^\d+(?:\.\d{3})*$/;
-    if (value === '') {
+    const digits = guessInput.value.replace(/\D/g, '');
+    if (digits === '') {
+      guessInput.value = '';
       feedback.textContent = '';
-    } else if (!validPattern.test(value)) {
-      feedback.textContent = 'Formato inválido';
     } else {
-      const number = Number(value.replace(/\./g, ''));
+      guessInput.value = formatNumber(Number(digits));
+      const number = Number(digits);
       if (number < 1 || number > max) {
         feedback.textContent = 'Fuera de rango';
       } else {
