@@ -25,7 +25,9 @@
   </form>
   <output id="feedback" aria-live="polite" class="feedback"></output>
   <p id="attempts">Intentos: 0</p>
-  <p id="range">Menor: - | Mayor: -</p>
+  <p id="range">Menor: 1 | Mayor: 3.000.000.000</p>
+  <h2>Historial de intentos</h2>
+  <ul id="history"></ul>
   <button id="resetBtn" type="button">Reiniciar</button>
 </main>
 <script>
@@ -41,17 +43,18 @@
   const feedback = document.getElementById('feedback');
   const attemptsText = document.getElementById('attempts');
   const rangeText = document.getElementById('range');
+  const historyList = document.getElementById('history');
   const form = document.getElementById('guessForm');
-  let minTried = null;
-  let maxTried = null;
+  let lowerBound = 1;
+  let upperBound = max;
 
   function formatNumber(n) {
     return n.toLocaleString('es-ES');
   }
 
   function updateRangeText() {
-    const minText = minTried == null ? '-' : formatNumber(minTried);
-    const maxText = maxTried == null ? '-' : formatNumber(maxTried);
+    const minText = formatNumber(lowerBound);
+    const maxText = formatNumber(upperBound);
     rangeText.textContent = 'Menor: ' + minText + ' | Mayor: ' + maxText;
   }
 
@@ -84,8 +87,9 @@
     guessInput.value = '';
     sendBtn.disabled = true;
     sendBtn.setAttribute('aria-disabled', 'true');
-    minTried = null;
-    maxTried = null;
+    lowerBound = 1;
+    upperBound = max;
+    historyList.innerHTML = '';
     updateRangeText();
     guessInput.focus();
   }
@@ -96,16 +100,23 @@
     const guess = Number(guessInput.value.replace(/\./g, ''));
     attempts++;
     attemptsText.textContent = 'Intentos: ' + attempts;
-    if (minTried === null || guess < minTried) minTried = guess;
-    if (maxTried === null || guess > maxTried) maxTried = guess;
-    updateRangeText();
+    let hint = '';
     if (guess === secret) {
-      feedback.textContent = 'Correcto';
+      hint = 'Correcto';
+      feedback.textContent = hint;
     } else if (guess < secret) {
-      feedback.textContent = 'Mayor';
+      lowerBound = Math.max(lowerBound, guess);
+      hint = 'Mayor';
+      feedback.textContent = hint;
     } else {
-      feedback.textContent = 'Menor';
+      upperBound = Math.min(upperBound, guess);
+      hint = 'Menor';
+      feedback.textContent = hint;
     }
+    updateRangeText();
+    const li = document.createElement('li');
+    li.textContent = formatNumber(guess) + ' → ' + hint;
+    historyList.appendChild(li);
     guessInput.value = '';
     updateSendState();
   }
@@ -121,8 +132,9 @@
     generateBtn.setAttribute('aria-disabled', 'false');
     sendBtn.disabled = true;
     sendBtn.setAttribute('aria-disabled', 'true');
-    minTried = null;
-    maxTried = null;
+    lowerBound = 1;
+    upperBound = max;
+    historyList.innerHTML = '';
     updateRangeText();
   }
 
