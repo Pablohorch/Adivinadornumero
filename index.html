@@ -90,13 +90,14 @@
   <form id="guessForm" autocomplete="off">
     <label for="guessInput">Introduce tu número…</label>
     <input id="guessInput" type="text" inputmode="numeric" pattern="[0-9.]*" placeholder="Introduce tu número…">
-    <div class="button-row">
-      <button id="preFillBtn" type="button" disabled aria-disabled="true">PreEscribir</button>
-      <button id="sendBtn" type="submit" disabled aria-disabled="true">Enviar</button>
-    </div>
-  </form>
-  <output id="feedback" aria-live="polite" class="feedback"></output>
-  <p id="attempts">Intentos: 0</p>
+      <div class="button-row">
+        <button id="preFillBtn" type="button" disabled aria-disabled="true">PreEscribir</button>
+        <button id="fillBtn" type="button">Rellenar</button>
+        <button id="sendBtn" type="submit" disabled aria-disabled="true">Enviar</button>
+      </div>
+      </form>
+      <output id="feedback" aria-live="polite" class="feedback"></output>
+      <p id="attempts">Intentos: 0</p>
   <p id="range">Menor: 1 | Mayor: 3.000.000.000</p>
   <h2>Historial de intentos</h2>
   <ul id="history"></ul>
@@ -112,6 +113,7 @@
   const guessInput = document.getElementById('guessInput');
   const sendBtn = document.getElementById('sendBtn');
   const preFillBtn = document.getElementById('preFillBtn');
+  const fillBtn = document.getElementById('fillBtn');
   const resetBtn = document.getElementById('resetBtn');
   const feedback = document.getElementById('feedback');
   const attemptsText = document.getElementById('attempts');
@@ -169,7 +171,7 @@
   updateRangeText();
 
   // Habilita o deshabilita el botón Enviar según la entrada y si existe número secreto
-  function updateSendState() {
+    function updateSendState() {
     const raw = guessInput.value.trim().replace(/\./g, '');
     const isValid = secret !== null && raw !== '' &&
                     /^\d+$/.test(raw) && (n => n >= 1 && n <= max)(Number(raw));
@@ -271,6 +273,17 @@
       updateSendState();
       guessInput.focus();
     }
+  });
+
+  fillBtn.addEventListener('click', () => {
+    const raw = guessInput.value.trim().replace(/\./g, '');
+    if (raw === '') return;
+    const maxDigits = String(upperBound).length;
+    const padded = raw.padEnd(maxDigits, '0');
+    guessInput.value = formatNumber(Number(padded));
+    feedback.textContent = '';
+    updateSendState();
+    guessInput.focus();
   });
 
   generateBtn.addEventListener('click', generateSecret);
