@@ -47,7 +47,8 @@
   }
 
   button,
-  input {
+  input,
+  textarea {
     font-size: 1rem;
     padding: 0.75rem;
     min-height: 44px;
@@ -107,6 +108,8 @@
 <body>
 <main>
   <h1>Adivina el número</h1>
+  <label for="digitsInput">Dígitos del número secreto</label>
+  <input id="digitsInput" type="number" min="1" max="9" value="9">
   <button id="generateBtn" type="button">Generar número</button>
   <form id="guessForm" autocomplete="off">
     <label for="guessInput">Introduce tu número…</label>
@@ -124,6 +127,14 @@
   <button id="resetBtn" type="button">Reiniciar</button>
   <h2>Ranking de intentos</h2>
   <ol id="rankingList"></ol>
+  <h2>Multijugador</h2>
+  <div class="button-row">
+    <button id="hostBtn" type="button">Activar servidor</button>
+    <button id="connectBtn" type="button">Conectar a servidor</button>
+  </div>
+  <p id="signalHint"></p>
+  <textarea id="signalBox" class="hidden" placeholder="Código de conexión"></textarea>
+  <button id="signalBtn" type="button" class="hidden">Procesar</button>
 </main>
 <div id="successScreen" class="overlay hidden">
   <div class="overlay-content">
@@ -134,7 +145,7 @@
 <script>
 // Lógica del juego de adivinar el número
 (function() {
-  const max = 3000000000;
+  let max = 3000000000;
   let secret = null;
   let attempts = 0;
   const generateBtn = document.getElementById('generateBtn');
@@ -151,10 +162,18 @@
   const successMessage = document.getElementById('successMessage');
   const playAgainBtn = document.getElementById('playAgainBtn');
   const rankingList = document.getElementById('rankingList');
+  const digitsInput = document.getElementById('digitsInput');
+  const hostBtn = document.getElementById('hostBtn');
+  const connectBtn = document.getElementById('connectBtn');
+  const signalBox = document.getElementById('signalBox');
+  const signalBtn = document.getElementById('signalBtn');
+  const signalHint = document.getElementById('signalHint');
   const ranking = [];
   let lowerBound = 1;
   let upperBound = max;
   let commonPrefix = '';
+  let pc = null;
+  let dc = null;
 
   function formatNumber(n) {
     return n.toLocaleString('es-ES');
@@ -209,7 +228,88 @@
     });
   }
 
-  updateRangeText();
+  function updateMaxFromDigits() {
+    const digits = parseInt(digitsInput.value, 10) || 1;
+    max = Math.pow(10, digits) - 1;
+    upperBound = max;
+    updateRangeText();
+  }
+
+  digitsInput.addEventListener('input', updateMaxFromDigits);
+
+  function waitIceGathering(pc) {
+    return new Promise(resolve => {
+      if (pc.iceGatheringState === 'complete') {
+        resolve();
+      } else {
+        pc.addEventListener('icegatheringstatechange', () => {
+          if (pc.iceGatheringState === 'complete') resolve();
+        });
+      }
+    });
+  }
+
+  async function startHosting() {
+    generateSecret();
+    pc = new RTCPeerConnection();
+    dc = pc.createDataChannel('secret');
+    dc.onopen = () => {
+      dc.send(JSON.stringify({ secret, max }));
+    };
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitIceGathering(pc);
+    signalHint.textContent = 'Comparte este código con tu amigo y pega su respuesta.';
+    signalBox.classList.remove('hidden');
+    signalBtn.classList.remove('hidden');
+    signalBox.value = btoa(JSON.stringify(pc.localDescription));
+    signalBtn.textContent = 'Aceptar respuesta';
+    signalBtn.onclick = async () => {
+      const answer = JSON.parse(atob(signalBox.value.trim()));
+      await pc.setRemoteDescription(answer);
+      signalBtn.classList.add('hidden');
+      signalBox.classList.add('hidden');
+      signalHint.textContent = 'Conexión establecida.';
+    };
+  }
+
+  async function connectToHost() {
+    pc = new RTCPeerConnection();
+    pc.ondatachannel = ev => {
+      dc = ev.channel;
+      dc.onmessage = e => {
+        const msg = JSON.parse(e.data);
+        secret = msg.secret;
+        max = msg.max;
+        digitsInput.value = String(String(max).length);
+        lowerBound = 1;
+        upperBound = max;
+        attempts = 0;
+        attemptsText.textContent = 'Intentos: 0';
+        feedback.textContent = '';
+        generateBtn.disabled = true;
+        generateBtn.setAttribute('aria-disabled', 'true');
+        updateRangeText();
+        updateSendState();
+      };
+    };
+    signalHint.textContent = 'Pega el código del servidor y pulsa conectar. Luego comparte tu respuesta.';
+    signalBox.classList.remove('hidden');
+    signalBtn.classList.remove('hidden');
+    signalBox.value = '';
+    signalBtn.textContent = 'Conectar';
+    signalBtn.onclick = async () => {
+      const offer = JSON.parse(atob(signalBox.value.trim()));
+      await pc.setRemoteDescription(offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await waitIceGathering(pc);
+      signalBox.value = btoa(JSON.stringify(pc.localDescription));
+      signalBtn.textContent = 'Copia y envía este código al servidor';
+    };
+  }
+
+  updateMaxFromDigits();
   updateRanking();
 
   // Habilita o deshabilita el botón Enviar según la entrada y si existe número secreto
@@ -335,6 +435,8 @@
     e.preventDefault();
     if (!sendBtn.disabled) handleGuess();
   });
+  hostBtn.addEventListener('click', startHosting);
+  connectBtn.addEventListener('click', connectToHost);
 })();
 </script>
 </body>
